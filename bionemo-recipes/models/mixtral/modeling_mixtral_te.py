@@ -101,8 +101,15 @@ class NVMixtralSparseMoeBlock(nn.Module):
         def _init_method(x):
             torch.nn.init.normal_(x, mean=0.0, std=config.initializer_range)
 
-        # Router gate: standard nn.Linear so it stays in bf16 during FP8 training
-        self.gate = nn.Linear(self.hidden_size, self.num_experts, bias=False, device=device, dtype=config.dtype)
+        with transformer_engine.pytorch.quantized_model_init(enabled=False):
+            self.gate = transformer_engine.pytorch.Linear(
+                self.hidden_size,
+                self.num_experts,
+                bias=False,
+                device=device,
+                params_dtype=config.dtype,
+                init_method=_init_method,
+            )
 
         # Expert FFNs using TE GroupedLinear for efficient parallel processing
         self.experts_gate_up = transformer_engine.pytorch.GroupedLinear(
@@ -139,7 +146,10 @@ class NVMixtralSparseMoeBlock(nn.Module):
             hidden_states = hidden_states.reshape(-1, self.hidden_size)
 
         # Router: compute expert assignments
-        router_logits = self.gate(hidden_states)  # [N, num_experts]
+        with transformer_engine.pytorch.autocast(enabled=False):
+            # Keep the router logits in bf16 during FP8 training
+            router_logits = self.gate(hidden_states)  # [N, num_experts]
+
         routing_weights = torch.nn.functional.softmax(router_logits, dim=-1, dtype=torch.float32)
         routing_weights, selected_experts = torch.topk(routing_weights, self.top_k, dim=-1)  # [N, top_k]
         # Normalize routing weights
@@ -381,14 +391,16 @@ class NVMixtralForCausalLM(NVMixtralPreTrainedModel, __import__("transformers").
         super().__init__(config)
         self.model = NVMixtralModel(config)
         self.vocab_size = config.vocab_size
-        self.lm_head = transformer_engine.pytorch.Linear(
-            config.hidden_size,
-            config.vocab_size,
-            bias=False,
-            params_dtype=config.dtype,
-            device="meta" if torch.get_default_device() == torch.device("meta") else "cuda",
-            init_method=lambda x: torch.nn.init.normal_(x, mean=0.0, std=config.initializer_range),
-        )
+
+        with transformer_engine.pytorch.quantized_model_init(enabled=False):
+            self.lm_head = transformer_engine.pytorch.Linear(
+                config.hidden_size,
+                config.vocab_size,
+                bias=False,
+                params_dtype=config.dtype,
+                device="meta" if torch.get_default_device() == torch.device("meta") else "cuda",
+                init_method=lambda x: torch.nn.init.normal_(x, mean=0.0, std=config.initializer_range),
+            )
 
         self.post_init()
 

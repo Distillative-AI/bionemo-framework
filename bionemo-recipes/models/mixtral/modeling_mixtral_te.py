@@ -49,6 +49,7 @@ class NVMixtralPreTrainedModel(PreTrainedModel):
     base_model_prefix = "model"
     _no_split_modules = ("NVMixtralDecoderLayer",)
     _skip_keys_device_placement = ("past_key_values",)
+    _do_not_quantize = ("lm_head", "model.layers.*.mlp.gate")  # Flag for testing that these layers are not quantized.
 
     def init_empty_weights(self):
         """Handles moving the model from the meta device to the cuda device and initializing the weights."""

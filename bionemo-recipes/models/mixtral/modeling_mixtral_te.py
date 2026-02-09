@@ -59,11 +59,6 @@ class NVMixtralPreTrainedModel(PreTrainedModel):
         self.model.embed_tokens.to_empty(device="cuda")
         self.model.embed_tokens.apply(self._init_weights)
 
-        # Initialize router gate weights (nn.Linear, not TE)
-        for layer in self.model.layers:
-            layer.mlp.gate.to_empty(device="cuda")
-            layer.mlp.gate.apply(self._init_weights)
-
         self.model.rotary_emb.inv_freq = LlamaRotaryEmbedding(config=self.model.config).inv_freq.to("cuda")
 
         self.tie_weights()

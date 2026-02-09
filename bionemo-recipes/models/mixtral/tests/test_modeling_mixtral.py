@@ -26,10 +26,6 @@ from typing import Callable, Dict, List, Literal, Type
 import pytest
 import torch
 import transformers
-from collator import DataCollatorWithFlattening
-from convert import convert_mixtral_hf_to_te, convert_mixtral_te_to_hf
-from modeling_mixtral_te import NVMixtralConfig, NVMixtralForCausalLM
-from tests.common import BaseModelTest, TestTolerances
 from torch import nn
 from transformers import (
     AutoTokenizer,
@@ -38,6 +34,11 @@ from transformers import (
     PreTrainedModel,
     PreTrainedTokenizer,
 )
+
+from collator import DataCollatorWithFlattening
+from convert import convert_mixtral_hf_to_te, convert_mixtral_te_to_hf
+from modeling_mixtral_te import NVMixtralConfig, NVMixtralForCausalLM
+from tests.common import BaseModelTest, TestTolerances
 
 
 class TestMixtralModel(BaseModelTest):
@@ -88,36 +89,6 @@ class TestMixtralModel(BaseModelTest):
         if os.environ.get("CI") == "true":
             pytest.skip("Skipping Mixtral reference model test in CI, requires Mini-Mixtral download ~25GB")
         return super().get_reference_model(dtype=dtype, attn_implementation=attn_implementation)
-
-    # def get_converted_te_model_checkpoint(self) -> Path:
-    #     """Get the path to the converted TE model checkpoint.
-
-    #     Override to perform conversion entirely on CPU, since Mini-Mixtral is ~25GB in bf16 and the
-    #     state.apply_transforms call creates a state_dict copy, which would OOM on a 32GB GPU.
-    #     """
-    #     if os.environ.get("CI") == "true":
-    #         pytest.skip("Skipping Mixtral checkpoint conversion in CI, requires Mini-Mixtral download ~25GB")
-
-    #     upstream_class = self.get_upstream_model_class()
-    #     upstream_id = self.get_upstream_model_id()
-    #     revision = self.get_upstream_model_revision()
-
-    #     # Load HF model on CPU (not CUDA) to avoid OOM during conversion
-    #     model_hf = upstream_class.from_pretrained(upstream_id, revision=revision, dtype=torch.bfloat16)
-
-    #     convert_fn = self.get_hf_to_te_converter()
-    #     model_te = convert_fn(model_hf)
-
-    #     del model_hf
-    #     gc.collect()
-
-    #     checkpoint_path: Path = self._tmp_dir / "converted_te_model"
-    #     model_te.save_pretrained(checkpoint_path)
-
-    #     del model_te
-    #     gc.collect()
-
-    #     return checkpoint_path
 
     def get_test_input_data(
         self, format: Literal["bshd", "thd"] = "bshd", pad_to_multiple_of: int | None = None

@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import state
 import torch
-from modeling_mixtral_te import NVMixtralConfig, NVMixtralForCausalLM
 from transformers import MixtralConfig, MixtralForCausalLM
+
+import state
+from modeling_mixtral_te import NVMixtralConfig, NVMixtralForCausalLM
 
 
 mapping = {

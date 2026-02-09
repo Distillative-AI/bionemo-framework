@@ -19,9 +19,10 @@ import json
 import shutil
 from pathlib import Path
 
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
 import convert
 from modeling_mixtral_te import AUTO_MAP
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 
 def export_hf_checkpoint(tag: str, export_path: Path):

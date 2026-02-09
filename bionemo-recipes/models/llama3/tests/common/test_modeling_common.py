@@ -15,6 +15,7 @@
 
 """Common test class for BioNeMo models, following HuggingFace transformers patterns."""
 
+import fnmatch
 import gc
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -283,7 +284,9 @@ class BaseModelTest(ABC):
                 if should_be_fp8:
                     if f"{name}.weight" in set(model._tied_weights_keys):
                         continue  # Skip tied weights
-                    elif hasattr(model, "_do_not_quantize") and name in model._do_not_quantize:
+                    elif hasattr(model, "_do_not_quantize") and any(
+                        fnmatch.fnmatch(name, pattern) for pattern in model._do_not_quantize
+                    ):
                         continue  # Skip weights that should be kept in bf16
                     assert isinstance(module.weight, QuantizedTensor), f"Module {name} weight is not a Float8Tensor"
 
